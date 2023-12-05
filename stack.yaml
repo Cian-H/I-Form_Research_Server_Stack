@@ -41,16 +41,16 @@ volumes:
     driver_opts:
       type: nfs
       device: ":volume1/web"
-      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   grafana:
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/grafana"
-      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse:
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse"
-      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
