@@ -1,0 +1,56 @@
+services:
+  # This service runs a grafana instance for hosting dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  # The following service is a simple nginx server that hosts static websites
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - web:/usr/share/nginx/html
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  # And, finally, we want to add a dataverse instance to the swarm
+  dataverse:
+    image: gdcc/dataverse:alpha
+    ports:
+      - "8080:8080"
+    volumes:
+      - dataverse:/usr/local/glassfish4/glassfish/domains/domain1/autodeploy
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+# This defines the NFS volumes for persistence
+#! This requires nodes to be IP whitelisted in the NAS
+volumes:
+  web:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/web"
+      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  grafana:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/grafana"
+      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse"
+      o: "addr=I-Form_Data,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
