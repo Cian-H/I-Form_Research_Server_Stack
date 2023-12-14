@@ -1,6 +1,131 @@
-version: "3.2"
+version: "3.8"
+
 
 services:
+  ###~~~~~~ First, we should plan our network management services ~~~~~~###
+  # Obviously, we should add the portainer agent service for managing swarm resources
+  portainer_agent:
+    image: portainer/agent:latest
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.portainer_agent
+      AGENT_PORT: 9001
+    # ports:
+    #   - "8000:8000"
+    #   - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      - i-form_research_server_stack
+  # A traefik instance provides load balancing and reverse proxying for our services
+  traefik:
+    image: traefik:latest
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.priority=10" # disable permanent forwarding for every route
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true" # <== Enable TLS-ALPN-01 to generate and renew ACME certs
+      - "--certificatesresolvers.myresolver.acme.email=${useremail}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+    ports:
+      # - "80:80"
+      # - "443:443"
+      - "8089:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik:/etc/traefik
+      - letsencrypt:/letsencrypt
+    deploy:
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+    # secrets:
+    #   - traefik_cert
+    #   - traefik_key
+  whoami:
+      image: "containous/whoami"
+      labels:
+        - "traefik.enable=true"
+        # - "traefik.http.routers.whoami.entrypoints=web"
+        - "traefik.http.routers.whoami.rule=Host(`whoami.${traefikhost}`)"
+        - "traefik.http.routers.whoami.tls=true"
+        - "traefik.http.routers.whoami.tls.certresolver=myresolver" 
+      networks:
+        - i-form_research_server_stack
+  ###~~~~~~ Then, we will need numerous databases for our various services ~~~~~~###
+  # We want neo4j as a graph database that can easily be used by other services
+  neo4j:
+    image: neo4j:latest
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j:/data
+    deploy:
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+  # # Dataverse requires a postgres database, so we'll add that here
+  # postgres:
+  #   image: postgres:10.13
+  #   tty: true
+  #   stdin_open: true
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #   ports:
+  #     - "5433:5432"
+  #   env_file:
+  #     - dataverse.env
+  #   secrets:
+  #       - dataverse_postgres_key
+  #   environment:
+  #     LC_ALL: C.UTF-8
+  #     POSTGRES_PASSWORD: /run/secrets/dataverse_postgres_key
+  #   volumes:
+  #     - dataverse_db:/var/lib/postgresql/data/ # persist data even if container shuts down
+  #     - dataverse_triggers:/triggers
+  #   networks:
+  #     - i-form_research_server_stack
+  # We also want a mysql database for elabftw
+  mysql:
+    image: mysql/mysql-server:latest
+    tty: true
+    stdin_open: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+    cap_drop:
+        - AUDIT_WRITE
+        - MKNOD
+        - SYS_CHROOT
+        - SETFCAP
+        - NET_RAW
+    cap_add:
+        - SYS_NICE
+    secrets:
+        - elabftw_sql_key
+    environment:
+        MYSQL_DATABASE: "elabftw"
+        MYSQL_USER: "elabftw"
+        MYSQL_PASSWORD: /run/secrets/elabftw_sql_key
+        MYSQL_RANDOM_ROOT_PASSWORD: 1
+        TZ: "Europe/Paris"
+    volumes:
+        - elabftw_sql:/var/lib/mysql
+    networks:
+      - i-form_research_server_stack
+  ###~~~~~~ Then, we plan our general utility services ~~~~~~###
   # This service runs a grafana instance for hosting dashboards
   grafana:
     image: grafana/grafana:latest
@@ -9,9 +134,10 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     deploy:
-      replicas: 1
       restart_policy:
         condition: on-failure
+    networks:
+      - i-form_research_server_stack
   # The following service is a simple nginx server that hosts static websites
   nginx:
     image: nginx:latest
@@ -20,24 +146,264 @@ services:
     volumes:
       - web:/usr/share/nginx/html
     deploy:
-      replicas: 1
       restart_policy:
         condition: on-failure
-  # And, finally, we want to add a dataverse instance to the swarm
-  dataverse:
-    image: gdcc/dataverse:alpha
+    networks:
+      - i-form_research_server_stack
+  # Then, we add neodash as a service that can be used to visualize the neo4j database
+  # This should provide the real AI assisted punching power for this stack
+  neodash:
+    image: neo4jlabs/neodash:latest
     ports:
-      - "8080:8080"
-    volumes:
-      - dataverse:/usr/local/glassfish4/glassfish/domains/domain1/autodeploy
+      - "5005:5005"
     deploy:
-      replicas: 1
       restart_policy:
         condition: on-failure
+    networks:
+      - i-form_research_server_stack
+  # Lastly, we need a LIMS system, but we're not sure which one to use yet
+  # As a test, we'll run senaite, with elabftw for lab notebook functionality
+  senaite:
+    image: senaite/senaite:edge
+    ports:
+      - "8082:8080"
+    volumes:
+      - senaite:/data
+    networks:
+      - i-form_research_server_stack
+  # We also need to add a service for the elabftw instance and its database
+  elabftw:
+    image: elabftw/elabimg:latest
+    # tty: true
+    # stdin_open: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+    depends_on:
+        - mysql
+    cap_drop:
+        - ALL
+    cap_add:
+        - CHOWN
+        - SETGID
+        - SETUID
+        - FOWNER
+        - DAC_OVERRIDE
+    secrets:
+        - elabftw_sql_key
+        - elabftw_secret_key
+    environment:
+        SECRET_KEY: /run/secrets/elabftw_secret_key
+        DB_HOST: "mysql"
+        DB_PORT: "3306"
+        DB_NAME: "elabftw"
+        DB_USER: "elabftw"
+        DB_PASSWORD: "/run/secrets/elabftw_sql_key"
+        # - DB_PASSWORD=$$DB_PASSWORD
+        # DB_CERT_PATH: "/mysql-cert/cert.pem"
+        PHP_TIMEZONE: "Europe/Paris"
+        TZ: "Europe/Paris"
+        SERVER_NAME: "I-Form eLabFTW"
+        SITE_URL: "elab.i-form.ie"
+        DISABLE_HTTPS: 1
+        ENABLE_LETSENCRYPT: 0
+    ports:
+        - "443:443"
+    volumes:
+        - elabftw_uploads:/elabftw/uploads
+        - elabftw_var:/var/elabftw
+        - elabftw_etc:/etc/elabftw
+        # if you have enabled letsencrypt, uncomment the line below
+        # path to the folder with TLS certificate + private key
+        # host:container
+        #- /etc/letsencrypt:/ssl
+    networks:
+      - i-form_research_server_stack
+  # # Lastly, we have to add several services to get dataverse to work
+  # solr:
+  #   image: coronawhy/solr:8.9.0
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #   privileged: true
+  #   ports:
+  #     - "8983:8983"
+  #   env_file:
+  #     - dataverse.env
+  #   environment:
+  #     - "SOLR_HOST=solr"
+  #     - "SOLR_PORT=8983"
+  #     - "SOLR_JAVA_MEM=-Xms1g -Xmx1g"
+  #     - "SOLR_OPTS=-Dlog4j2.formatMsgNoLookups=true"
+  #   volumes:
+  #     - dataverse_solr_data:/opt/solr/server/solr/collection1/data
+  #     # - dataverse_config:/opt/solr/server/solr/collection1/conf/
+  #     - type: bind
+  #       source: dataverse_schema
+  #       target: /opt/solr/server/solr/collection1/conf/schema.xml
+  #       volume:
+  #         nocopy: true
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.solr.rule=Host(`solr.${traefikhost}`)"
+  #     - "traefik.http.services.solr.loadbalancer.server.port=8983"
+  #     - "traefik.http.routers.solr.tls=true"
+  #     - "traefik.http.routers.solr.tls.certresolver=myresolver"  
+  #   networks:
+  #     - i-form_research_server_stack
+
+  # minio:
+  #   image: minio/minio:RELEASE.2021-10-06T23-36-31Z
+  #   volumes:
+  #     - dataverse_minio:/data
+  #   command:
+  #     - server
+  #     - /data
+  #     - --console-address
+  #     - ":9001"
+  #   env_file:
+  #     - dataverse.env
+  #   environment:
+  #     # These values were set by the dataverse maintainers, not sure if they can be changed.
+  #     #? MinIO appears to be completely contained though, so it should be fine?
+  #     - MINIO_ROOT_USER=love
+  #     - MINIO_ROOT_PASSWORD=love1234
+  #     # Do NOT use MINIO_DOMAIN or MINIO_SERVER_URL with Traefik.
+  #     # All Routing is done by Traefik, just tell minio where to redirect to.
+  #     - MINIO_BROWSER_REDIRECT_URL=http://stash.localhost
+  #   deploy:
+  #     labels:
+  #       - traefik.enable=true
+  #       - traefik.http.routers.minio.service=minio
+  #       - traefik.http.routers.minio.rule=Host(`minio.${traefikhost}`)
+  #       - traefik.http.services.minio.loadbalancer.server.port=9000
+  #       - traefik.http.routers.minio-console.service=minio-console
+  #       - traefik.http.routers.minio-console.rule=Host(`minio-stash.${traefikhost}`)
+  #       - traefik.http.services.minio-console.loadbalancer.server.port=9001
+  #   networks:
+  #     - i-form_research_server_stack
+  
+  # dataverse:
+  #   image: coronawhy/dataverse:5.13.allclouds
+  #   tty: true  # DEBUG
+  #   stdin_open: true  # DEBUG
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #   privileged: true
+  #   user:
+  #     "root"
+  #   ports:
+  #     #- "443:443"
+  #     - "4848:4848"
+  #     - "8080:8080"
+  #   env_file:
+  #     - dataverse.env
+  #   secrets:
+  #     - dataverse_postgres_key
+  #   environment:
+  #     POSTGRES_PASSWORD: /run/secrets/dataverse_postgres_key
+  #     DATAVERSE_DB_PASSWORD: /run/secrets/dataverse_postgres_key
+  #     CVM_SERVER_NAME: CESSDA #Optional
+  #     WEBHOOK:
+  #     CESSDA:
+  #     CLARIN:
+  #     doi_authority:
+  #     doi_provider:
+  #     doi_username:
+  #     doi_password:
+  #     dataciterestapiurlstring:
+  #     baseurlstring:
+  #     aws_bucket_name:
+  #     aws_s3_profile:
+  #     aws_endpoint_url:
+  #     system_email:
+  #     mailhost:
+  #     mailuser:
+  #     no_reply_email:
+  #     smtp_password:
+  #     smtp_port:
+  #     socket_port:
+  #     federated_json_file:
+  #     bucketname_1:
+  #     minio_label_1:
+  #     minio_bucket_1:
+  #     bucketname_2:
+  #     minio_profile_1:
+  #     minio_label_2:
+  #     minio_bucket_2:
+  #     minio_profile_2:
+  #     DATAVERSE_DB_HOST:
+  #     DATAVERSE_DB_USER:
+  #     DATAVERSE_DB_NAME:
+  #     DATAVERSE_SERVICE_HOST:
+  #     DATAVERSE_URL:
+  #     SOLR_SERVICE_HOST:
+  #     SOLR_SERVICE_PORT:
+  #     CVM_SERVER_URL: "https://ns.${traefikhost}"
+  #     LANG: en
+  #     cvManager: http://
+  #     BUNDLEPROPERTIES: Bundle.properties
+  #     ADMIN_EMAIL: admin@localhost
+  #     MAIL_SERVER: mailrelay
+  #     SOLR_LOCATION: solr:8983
+  #     INIT_SCRIPTS_FOLDER:
+  #     hostname:
+  #     MAINLANG:
+  #     POSTGRES_SERVER:
+  #     POSTGRES_PORT:
+  #     POSTGRES_DATABASE:
+  #     POSTGRES_USER:
+  #     PGPASSWORD:
+  #     TWORAVENS_LOCATION: NOT INSTALLED
+  #     RSERVE_HOST: localhost
+  #     RSERVE_PORT: 6311
+  #     RSERVE_USER: rserve
+  #     RSERVE_PASSWORD: rserve
+  #     JVM_OPTS: '-Xmx1g -Xms1g -XX:MaxPermSize=2g -XX:PermSize=2g'
+  #   depends_on:
+  #     - postgres
+  #     - solr
+  #   volumes:
+  #     - dataverse_secrets:/secrets
+  #     - dataverse_data:/data
+  #     - dataverse_docroot:/opt/docroot
+  #     - dataverse_init:/opt/payara/init.d
+  #     - dataverse_triggers:/opt/payara/triggers
+  #     # - dataverse_config:/opt/payara/dvinstall
+  #     - type: bind
+  #       source: dataverse_schema
+  #       target: /opt/payara/dvinstall/schema.xml
+  #       volume:
+  #         nocopy: true
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.dataverse.rule=Host(`www.${traefikhost}`)"
+  #     - "traefik.http.services.dataverse.loadbalancer.server.port=8080"
+  #     - "traefik.http.routers.dataverse.tls=true"
+  #     - "traefik.http.routers.dataverse.tls.certresolver=myresolver"
+  #   networks:
+  #     - i-form_research_server_stack
+
+networks:
+  i-form_research_server_stack:
+    external: true
 
 # This defines the NFS volumes for persistence
 #! This requires nodes to be IP whitelisted in the NAS
 volumes:
+  traefik:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/traefik"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/letsencrypt"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   web:
     driver: local
     driver_opts:
@@ -56,3 +422,114 @@ volumes:
       type: nfs
       device: ":volume1/dataverse"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_db:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/postgres_db"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_secrets:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/secrets"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_triggers:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/triggers"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_minio:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/minio-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_config:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/config"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_schema:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.1.237,nolock,soft,rw
+      device: ":volume1/dataverse/config/schema.xml"
+  # /opt/payara/appserver/glassfish/domains/domain1/config <- login config is here in container
+  dataverse_init:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/init.d"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_docroot:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/docroot"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  neo4j:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/neo4j"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  senaite:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/senaite"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_uploads:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/uploads"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_var:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/var"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_etc:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/etc"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_sql:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/sql"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+
+secrets:
+  elabftw_sql_key:
+    external: true
+  elabftw_secret_key:
+    external: true
+  dataverse_postgres_key:
+    external: true

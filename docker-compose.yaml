@@ -1,11 +1,13 @@
-version: "3.2"
+version: "3.8"
 
 services:
-  # The first service is a portainer instance that allows for easy management of the swarm
+  # The only non-swarm service is a portainer instance that allows for easy management of the swarm
   portainer:
     image: portainer/portainer-ce:latest
     ports:
       - "9000:9000"
+      - "8000:8000"
+      - "9443:9443"
     volumes:
       - portainer_data:/data
       - /var/run/docker.sock:/var/run/docker.sock
@@ -16,7 +18,9 @@ services:
       placement:
         constraints:
           - node.role == manager
-  # We also want a watchtower instance to automatically update our services
+  # Watchtower is used to automatically update the core services
+  #! Watchtower updates all containers running on the bound socket
+  #! so the maintainers need to be aware of this
   watchtower:
     image: containrrr/watchtower:latest
     volumes:
@@ -28,8 +32,9 @@ services:
       placement:
         constraints:
           - node.role == manager
+    command: --interval 30 --cleanup
 
-# This defines the NFS volumes for persistence
+# This defines the NFS volumes for portainer persistence
 #! This requires nodes to be IP whitelisted in the NAS
 volumes:
   portainer_data:
