@@ -1,0 +1,2 @@
+# Usage
+To use this script, run the command `deploy` in the root directory. This will deploy the core server services to whatever docker swarm the machine is connected to, then deploy the web server to the same swarm via portainer.

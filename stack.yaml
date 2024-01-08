@@ -75,6 +75,11 @@ services:
         condition: on-failure
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=7474"
+      - "traefik.http.services.go.loadbalancer.server.port=7687"
   # # Dataverse requires a postgres database, so we'll add that here
   # postgres:
   #   image: postgres:10.13
@@ -97,6 +102,10 @@ services:
   #     - dataverse_triggers:/triggers
   #   networks:
   #     - i-form_research_server_stack
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.go.rule=Path(`/`)"
+  #     - "traefik.http.services.go.loadbalancer.server.port=5432"
   # We also want a mysql database for elabftw
   mysql:
     image: mysql/mysql-server:latest
@@ -138,6 +147,10 @@ services:
         condition: on-failure
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=3000"
   # The following service is a simple nginx server that hosts static websites
   nginx:
     image: nginx:latest
@@ -150,6 +163,10 @@ services:
         condition: on-failure
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=80"
   # Then, we add neodash as a service that can be used to visualize the neo4j database
   # This should provide the real AI assisted punching power for this stack
   neodash:
@@ -161,6 +178,10 @@ services:
         condition: on-failure
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=5005"
   # Lastly, we need a LIMS system, but we're not sure which one to use yet
   # As a test, we'll run senaite, with elabftw for lab notebook functionality
   senaite:
@@ -171,6 +192,10 @@ services:
       - senaite:/data
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=8080"
   # We also need to add a service for the elabftw instance and its database
   elabftw:
     image: elabftw/elabimg:latest
@@ -219,6 +244,10 @@ services:
         #- /etc/letsencrypt:/ssl
     networks:
       - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=443"
   # # Lastly, we have to add several services to get dataverse to work
   # solr:
   #   image: coronawhy/solr:8.9.0
