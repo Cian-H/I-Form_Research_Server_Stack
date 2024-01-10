@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "portainer"
+version = "0.1.0"
+description = ""
+authors = ["Cian Hughes <cian.hughes@dcu.ie>"]
+packages = [{ include = "portainer", from = "." }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+docker = "^7.0.0"
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = false
+
+[build-system]
+requires = ["poetry-core", "setuptools", "requests", "docker"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

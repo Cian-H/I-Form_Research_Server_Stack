@@ -200,5 +200,5 @@ cython_debug/
 .swagger-codegen*
 src/portainer_api/*
 # These files do need to be included though:
-!src/portainer/pyproject.toml
-!src/portainer/build.py
+!src/portainer_api/pyproject.toml
+!src/portainer_api/build.py
