@@ -4,6 +4,9 @@ from typing import Optional
 import typer # type: ignore
 import subprocess
 import portainer # type: ignore
+import docker # type: ignore
+import tomllib
+from pathlib import Path
 
 
 def docker_deploy_core(stack_name: Optional[str] = "core"):
@@ -11,19 +14,53 @@ def docker_deploy_core(stack_name: Optional[str] = "core"):
     subprocess.run(["docker", "stack", "deploy", "-c", "docker-compose.yaml", stack_name])
 
 
+def fetch_repository_url() -> str:
+    """Fetches the repository url from the pyproject.toml file"""
+    with open("pyproject.toml", "rb") as f:
+        return tomllib.load(f)["tool"]["poetry"]["repository"]
+
+
 def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] = "stack"):
     """Deploys the stack using the portainer api, to allow for complete control over the stack"""
-    breakpoint() #! TODO: Implement way of using portainer api to deploy stack
+    # Create an API client
+    client = portainer.ApiClient()
+    client.configuration.host = "http://127.0.0.1:9000/api"
+    # Authenticate the client
+    auth = portainer.AuthApi(client)
+    auth_token = auth.authenticate_user(
+        portainer.AuthAuthenticatePayload(
+            username=username,
+            password=password,
+        ),
+    )
+    client.configuration.api_key["Authorization"] = auth_token.jwt
+    client.configuration.api_key_prefix["Authorization"] = "Bearer"
+    # Get the endpoint ID for the local docker endpoint
+    endpoints = portainer.EndpointsApi(client)
+    endpoint_id = next(filter(lambda e: e.name == "local", endpoints.endpoint_list())).id
+    # Then, deploy the stack using the API
+    stacks = portainer.StacksApi(client)
+    stacks.stack_create_docker_swarm_repository(
+        endpoint_id=endpoint_id,
+        body = portainer.StacksSwarmStackFromGitRepositoryPayload(
+            auto_update=portainer.PortainerAutoUpdateSettings(
+                interval="60m",
+            ),
+            name=stack_name,
+            compose_file="stack.yaml",
+            swarm_id=docker.from_env().swarm.id,
+            repository_url=fetch_repository_url(),
+        )
+    )
+    # breakpoint() #! TODO: Implement way of using portainer api to deploy stack
     # subprocess.run(["docker", "stack", "deploy", "-c", "stack.yaml", stack_name])
 
 
-def docker_deploy_all(core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):
+def docker_deploy_all(username: str, password: str, core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):
     """Deploys the core services and the stack"""
     docker_deploy_core(core_name)
-    docker_deploy_stack(stack_name)
+    docker_deploy_stack(username, password, stack_name)
 
 
 if __name__ == "__main__":
-    # typer.run(docker_deploy_all)
-    # docker_deploy_core("core")
-    typer.run(docker_deploy_stack)
+    typer.run(docker_deploy_all)

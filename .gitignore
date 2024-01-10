@@ -198,7 +198,7 @@ cython_debug/
 
 # Ignore dynamically constructed swagger APIs
 .swagger-codegen*
-src/portainer/*
+src/portainer_api/*
 # These files do need to be included though:
 !src/portainer/pyproject.toml
 !src/portainer/build.py
