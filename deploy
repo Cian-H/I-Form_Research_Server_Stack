@@ -1,12 +1,12 @@
 #!/usr/bin/env poetry run python
 
-from typing import Optional
-import typer # type: ignore
 import subprocess
-import portainer # type: ignore
-import docker # type: ignore
+from typing import Optional
+
+import docker  # type: ignore
+import portainer  # type: ignore
 import tomllib
-from pathlib import Path
+import typer  # type: ignore
 
 
 def docker_deploy_core(stack_name: Optional[str] = "core"):
@@ -52,8 +52,6 @@ def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] 
             repository_url=fetch_repository_url(),
         )
     )
-    # breakpoint() #! TODO: Implement way of using portainer api to deploy stack
-    # subprocess.run(["docker", "stack", "deploy", "-c", "stack.yaml", stack_name])
 
 
 def docker_deploy_all(username: str, password: str, core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):

@@ -5,14 +5,12 @@ description = ""
 authors = ["Cian Hughes <cian.hughes@dcu.ie>"]
 readme = "README.md"
 repository = "https://github.com/Cian-H/I-Form_Research_Server_Stack"
-packages = [
-    { include = "deploy", from = "." },
-]
+packages = [{ include = "deploy", from = "." }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 typer = "^0.9.0"
-portainer = {path = "src/portainer_api"}
+portainer = { path = "src/portainer_api" }
 docker = "^7.0.0"
 
 [tool.poetry.group.dev.dependencies]
