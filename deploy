@@ -33,21 +33,24 @@ def portainer_deploy_stack(stack_file: str, stacks: portainer.api.stacks_api.Sta
         else:
             raise FileNotFoundError(f"Could not find stack file {stack_file}")
     
-    print(f"Deploying stack {stack_name} from {stack_path}")
     stack_name = stack_name or stack_path.stem
+    repository_url = fetch_repository_url()
+    print(f"Deploying stack {stack_name} from {stack_path} @ {repository_url}")
     
+    scoped_kwargs = {
+        # "auto_update": portainer.PortainerAutoUpdateSettings(
+        #     interval="60m",
+        # ),
+        "name": stack_name,
+        "compose_file": str(stack_path),
+        "swarm_id": docker.from_env().swarm.id,
+        "repository_url": repository_url,
+    }
+    scoped_kwargs.update(kwargs)
     stacks.stack_create_docker_swarm_repository(
         endpoint_id=endpoint_id,
         body = portainer.StacksSwarmStackFromGitRepositoryPayload(
-            **{
-                # "auto_update": portainer.PortainerAutoUpdateSettings(
-                #     interval="60m",
-                # ),
-                "name": stack_name,
-                "compose_file": str(stack_path),
-                "swarm_id": docker.from_env().swarm.id,
-                "repository_url": fetch_repository_url(),
-            }.update(kwargs),
+            **scoped_kwargs,
         )
     )
     print(f"Stack {stack_name} deployed")

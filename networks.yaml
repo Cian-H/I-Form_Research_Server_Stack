@@ -1,3 +1,5 @@
+version: "3.8"
+
 networks:
   i-form_research_server_stack:
     driver: overlay

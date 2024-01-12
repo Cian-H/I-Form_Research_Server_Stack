@@ -1,10 +1,5 @@
 version: "3.8"
 
-include:
-  - volumes.yaml
-  - networks.yaml
-  - secrets.yaml
-
 services:
   ###~~~~~~ First, we should plan our network management services ~~~~~~###
   # Obviously, we should add the portainer agent service for managing swarm resources

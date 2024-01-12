@@ -1,3 +1,5 @@
+version: "3.8"
+
 # This defines the NFS volumes for persistence
 #! This requires nodes to be IP whitelisted in the NAS
 volumes:
