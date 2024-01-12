@@ -44,7 +44,7 @@ services:
       - "53:53"
       - "53:53/udp"
     volumes:
-      - coredns:/etc/coredns
+      - networks_coredns:/etc/coredns
     deploy:
       replicas: 1
       restart_policy:
@@ -77,4 +77,10 @@ volumes:
     driver_opts:
       type: nfs
       device: ":volume1/letsencrypt"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  networks_coredns:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/coredns"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
