@@ -23,6 +23,8 @@ def fetch_repository_url() -> str:
 def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] = "stack"):
     """Deploys the stack using the portainer api from the github repo.
     This allows portainer to have full control over the stack"""
+    print("Deploying stack")
+    print("Logging in to portainer")
     # Create an API client
     client = portainer.ApiClient()
     client.configuration.host = "http://127.0.0.1:9000/api"
@@ -40,6 +42,7 @@ def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] 
     endpoints = portainer.EndpointsApi(client)
     endpoint_id = next(filter(lambda e: e.name == "local", endpoints.endpoint_list())).id
     # Then, deploy the stack using the API
+    print("Deploying stack via portainer API")
     stacks = portainer.StacksApi(client)
     stacks.stack_create_docker_swarm_repository(
         endpoint_id=endpoint_id,
@@ -53,6 +56,7 @@ def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] 
             repository_url=fetch_repository_url(),
         )
     )
+    print("Stack deployed")
 
 
 def docker_deploy_all(username: str, password: str, core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):
