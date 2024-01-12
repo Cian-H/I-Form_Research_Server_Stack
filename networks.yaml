@@ -26,8 +26,8 @@ services:
       - "8089:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - traefik:/etc/traefik
-      - letsencrypt:/letsencrypt
+      - networks_traefik:/etc/traefik
+      - networks_letsencrypt:/letsencrypt
     deploy:
       replicas: 1
       restart_policy:
@@ -64,3 +64,17 @@ networks:
       driver: default
       config:
         - subnet: 172.252.0.0/16
+
+volumes:
+  networks_traefik:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/traefik"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  networks_letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/letsencrypt"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
