@@ -81,11 +81,10 @@ def deploy_stack(username: str, password: str, stack_name: Optional[str] = "stac
     stacks = portainer.StacksApi(client)
     # Then, deploy the substacks using the API
     print("Deploying substacks via portainer API")
-    # portainer_deploy_stack("secrets", stacks, endpoint_id)
     portainer_deploy_stack("networks", stacks, endpoint_id)
-    # portainer_deploy_stack("volumes", stacks, endpoint_id)
-    # portainer_deploy_stack("backend", stacks, endpoint_id)
-    # portainer_deploy_stack("frontend", stacks, endpoint_id)
+    portainer_deploy_stack("volumes", stacks, endpoint_id)
+    portainer_deploy_stack("backend", stacks, endpoint_id)
+    portainer_deploy_stack("frontend", stacks, endpoint_id)
     print("Stack deployed!")
 
 

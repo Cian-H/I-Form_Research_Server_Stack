@@ -7,13 +7,14 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana:/var/lib/grafana
+      - stack_grafana:/var/lib/grafana
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.12"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -31,7 +32,8 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.13"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -43,9 +45,10 @@ services:
     ports:
       - "8082:8080"
     volumes:
-      - senaite:/data
+      - stack_senaite:/data
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.14"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -53,14 +56,10 @@ services:
   # We also need to add a service for the elabftw instance and its database
   elabftw:
     image: elabftw/elabimg:latest
-    # tty: true
-    # stdin_open: true
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
-    depends_on:
-      - mysql
     cap_drop:
       - ALL
     cap_add:
@@ -74,7 +73,7 @@ services:
       - elabftw_secret_key
     environment:
       SECRET_KEY: /run/secrets/elabftw_secret_key
-      DB_HOST: "localhost"
+      DB_HOST: "172.252.0.7"
       DB_PORT: "3306"
       DB_NAME: "elabftw"
       DB_USER: "elabftw"
@@ -85,22 +84,80 @@ services:
       TZ: "Europe/Paris"
       SERVER_NAME: "I-Form eLabFTW"
       SITE_URL: "127.0.0.1:443" # "elab.i-form.ie"
-      DISABLE_HTTPS: 1
+      # DISABLE_HTTPS: 1
       ENABLE_LETSENCRYPT: 0
     ports:
-      - "3148:443"
-      # - "443:443"
+      - "443:443"
     volumes:
-      - elabftw_uploads:/elabftw/uploads
-      - elabftw_var:/var/elabftw
-      - elabftw_etc:/etc/elabftw
+      - stack_elabftw_uploads:/elabftw/uploads
+      - stack_elabftw_var:/var/elabftw
+      - stack_elabftw_etc:/etc/elabftw
       # if you have enabled letsencrypt, uncomment the line below
       # path to the folder with TLS certificate + private key
       # host:container
       #- /etc/letsencrypt:/ssl
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.15"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
       - "traefik.http.services.go.loadbalancer.server.port=443"
+
+networks:
+  i-form_research_server_stack:
+    external: true
+
+volumes:
+  stack_rsync_run:
+    external: true
+  stack_rsync_log:
+    external: true
+  stack_rsync_etc:
+    external: true
+  stack_traefik:
+    external: true
+  stack_letsencrypt:
+    external: true
+  stack_coredns:
+    external: true
+  stack_web:
+    external: true
+  stack_grafana:
+    external: true
+  stack_dataverse:
+    external: true
+  stack_dataverse_db:
+    external: true
+  stack_dataverse_secrets:
+    external: true
+  stack_dataverse_solr_data:
+    external: true
+  stack_dataverse_triggers:
+    external: true
+  stack_dataverse_solr:
+    external: true
+  stack_dataverse_minio:
+    external: true
+  stack_dataverse_config:
+    external: true
+  stack_dataverse_schema:
+    external: true
+  stack_dataverse_init:
+    external: true
+  stack_dataverse_data:
+    external: true
+  stack_dataverse_docroot:
+    external: true
+  stack_neo4j:
+    external: true
+  stack_senaite:
+    external: true
+  stack_elabftw_uploads:
+    external: true
+  stack_elabftw_var:
+    external: true
+  stack_elabftw_etc:
+    external: true
+  stack_elabftw_sql:
+    external: true
