@@ -1,0 +1,189 @@
+services:
+  elabftw:
+    image: elabftw/elabimg:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - FOWNER
+      - DAC_OVERRIDE
+    # secrets:
+    #   - elabftw_sql_key
+    #   - elabftw_secret_key
+    environment:
+      SECRET_KEY: def00000c729ff8686c923b5fd05bf1318920d8945ac75d2c5d8430e4cd6ac96620356faab74f9d601d74d7e5f9bb2dbafb4a12e66f4f250de172a126706a0f785aa1959 # /run/secrets/elabftw_secret_key
+      DB_HOST: "172.252.0.2"
+      DB_PORT: "3306"
+      DB_NAME: "elabftw"
+      DB_USER: "elabftw"
+      DB_PASSWORD: "test" # "/run/secrets/elabftw_sql_key"
+      # - DB_PASSWORD=$$DB_PASSWORD
+      # DB_CERT_PATH: "/mysql-cert/cert.pem"
+      PHP_TIMEZONE: "Europe/Paris"
+      TZ: "Europe/Paris"
+      SERVER_NAME: "I-Form eLabFTW"
+      SITE_URL: "127.0.0.1:443" # "elab.i-form.ie"
+      # DISABLE_HTTPS: 1
+      ENABLE_LETSENCRYPT: 0
+    ports:
+      # - "3148:443"
+      - "443:443"
+    volumes:
+      - elabftw_uploads:/elabftw/uploads
+      - elabftw_var:/var/elabftw
+      - elabftw_etc:/etc/elabftw
+      # if you have enabled letsencrypt, uncomment the line below
+      # path to the folder with TLS certificate + private key
+      # host:container
+      #- /etc/letsencrypt:/ssl
+    networks:
+      i-form_research_server_stack_test_net:
+        ipv4_address: "172.252.0.3"
+      # - i-form_research_server_stack
+
+networks:
+  i-form_research_server_stack_test_net:
+    external: true
+
+# This defines the NFS volumes for persistence
+#! This requires nodes to be IP whitelisted in the NAS
+volumes:
+  traefik:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/traefik"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/letsencrypt"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  web:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/web"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  grafana:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/grafana"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_db:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/postgres_db"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_secrets:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/secrets"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_triggers:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/triggers"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_minio:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/minio-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_config:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/config"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_schema:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.1.237,nolock,soft,rw
+      device: ":volume1/dataverse/config/schema.xml"
+  # /opt/payara/appserver/glassfish/domains/domain1/config <- login config is here in container
+  dataverse_init:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/init.d"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_docroot:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/docroot"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  neo4j:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/neo4j"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  senaite:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/senaite"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_uploads:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/uploads"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_var:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/var"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_etc:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/etc"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_sql:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/sql"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
