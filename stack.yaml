@@ -51,16 +51,6 @@ services:
     # secrets:
     #   - traefik_cert
     #   - traefik_key
-  whoami:
-    image: "containous/whoami"
-    labels:
-      - "traefik.enable=true"
-      # - "traefik.http.routers.whoami.entrypoints=web"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.${traefikhost}`)"
-      - "traefik.http.routers.whoami.tls=true"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
-    networks:
-      - i-form_research_server_stack
   ###~~~~~~ Then, we will need numerous databases for our various services ~~~~~~###
   # We want neo4j as a graph database that can easily be used by other services
   neo4j:
