@@ -1,7 +1,64 @@
 version: "3.8"
 
+services:
+  # We want our network to be managed by traefik, so we need to add it as a service
+  # Traefik provides load balancing and reverse proxying for our services
+  traefik:
+    image: traefik:latest
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.priority=10" # disable permanent forwarding for every route
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true" # <== Enable TLS-ALPN-01 to generate and renew ACME certs
+      - "--certificatesresolvers.myresolver.acme.email=${useremail}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+    ports:
+      # - "80:80"
+      # - "443:443"
+      - "8089:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - traefik:/etc/traefik
+      - letsencrypt:/letsencrypt
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+    # secrets:
+    #   - traefik_cert
+    #   - traefik_key
+  # We also want to add coredns, as a local NDS server/cache which pulls from as many sources as possible
+  coredns:
+    image: coredns/coredns:latest
+    ports:
+      - "53:53"
+      - "53:53/udp"
+    volumes:
+      - coredns:/etc/coredns
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=53"
+
 networks:
   i-form_research_server_stack:
+    name: i-form_research_server_stack
     driver: overlay
     ipam:
       driver: default
