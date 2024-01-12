@@ -1,7 +1,26 @@
 version: "3.8"
 
 services:
-  # We want our network to be managed by traefik, so we need to add it as a service
+  # We want to add coredns, as a local NDS server/cache which pulls from as many sources as possible
+  coredns:
+    image: coredns/coredns:latest
+    ports:
+      - "53:53"
+      - "53:53/udp"
+    volumes:
+      - networks_coredns:/etc/coredns
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.2"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=53"
+  # We also want our network to be managed by traefik, so we need to add it as a service
   # Traefik provides load balancing and reverse proxying for our services
   traefik:
     image: traefik:latest
@@ -33,28 +52,11 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.3"
     # secrets:
     #   - traefik_cert
     #   - traefik_key
-  # We also want to add coredns, as a local NDS server/cache which pulls from as many sources as possible
-  coredns:
-    image: coredns/coredns:latest
-    ports:
-      - "53:53"
-      - "53:53/udp"
-    volumes:
-      - networks_coredns:/etc/coredns
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    networks:
-      - i-form_research_server_stack
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go.rule=Path(`/`)"
-      - "traefik.http.services.go.loadbalancer.server.port=53"
 
 networks:
   i-form_research_server_stack:
