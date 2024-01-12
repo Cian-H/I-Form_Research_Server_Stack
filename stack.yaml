@@ -43,6 +43,7 @@ services:
       - traefik:/etc/traefik
       - letsencrypt:/letsencrypt
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
@@ -70,6 +71,7 @@ services:
     volumes:
       - neo4j:/data
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
@@ -85,6 +87,7 @@ services:
   #   tty: true
   #   stdin_open: true
   #   deploy:
+  #     replicas: 1
   #     restart_policy:
   #       condition: on-failure
   #   ports:
@@ -111,8 +114,14 @@ services:
     tty: true
     stdin_open: true
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
+    # healthcheck:
+    #   test: "/usr/bin/mysql --user=elabftw --password=test --execute 'SHOW DATABASES;'"
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 20
     cap_drop:
       - AUDIT_WRITE
       - MKNOD
@@ -126,8 +135,10 @@ services:
     environment:
       MYSQL_DATABASE: "elabftw"
       MYSQL_USER: "elabftw"
-      MYSQL_PASSWORD: /run/secrets/elabftw_sql_key
-      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_PASSWORD: "test" # MYSQL_PASSWORD_FILE: /run/secrets/elabftw_sql_key
+      MYSQL_ROOT_PASSWORD: "test" # MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_HOST: "localhost"
+      MYSQL_ROOT_HOST: "localhost" # Must allow root access from any host or won't work on swarm
       TZ: "Europe/Paris"
     volumes:
       - elabftw_sql:/var/lib/mysql
@@ -142,6 +153,7 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
@@ -158,6 +170,7 @@ services:
     volumes:
       - web:/usr/share/nginx/html
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
@@ -173,6 +186,7 @@ services:
     ports:
       - "5005:5005"
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     networks:
@@ -201,6 +215,7 @@ services:
     # tty: true
     # stdin_open: true
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
     depends_on:
@@ -218,25 +233,27 @@ services:
       - elabftw_secret_key
     environment:
       SECRET_KEY: /run/secrets/elabftw_secret_key
-      DB_HOST: "mysql"
+      DB_HOST: "localhost"
       DB_PORT: "3306"
       DB_NAME: "elabftw"
       DB_USER: "elabftw"
-      DB_PASSWORD: "/run/secrets/elabftw_sql_key"
+      DB_PASSWORD: "test" # "/run/secrets/elabftw_sql_key"
       # - DB_PASSWORD=$$DB_PASSWORD
       # DB_CERT_PATH: "/mysql-cert/cert.pem"
       PHP_TIMEZONE: "Europe/Paris"
       TZ: "Europe/Paris"
       SERVER_NAME: "I-Form eLabFTW"
-      SITE_URL: "elab.i-form.ie"
+      SITE_URL: "127.0.0.1:443" # "elab.i-form.ie"
       DISABLE_HTTPS: 1
       ENABLE_LETSENCRYPT: 0
     ports:
-      - "443:443"
+      - "3148:443"
+      # - "443:443"
     volumes:
       - elabftw_uploads:/elabftw/uploads
       - elabftw_var:/var/elabftw
       - elabftw_etc:/etc/elabftw
+      - elabftw_sql:/var/lib/mysql
       # if you have enabled letsencrypt, uncomment the line below
       # path to the folder with TLS certificate + private key
       # host:container
@@ -251,6 +268,7 @@ services:
   # solr:
   #   image: coronawhy/solr:8.9.0
   #   deploy:
+  #     replicas: 1
   #     restart_policy:
   #       condition: on-failure
   #   privileged: true
@@ -300,6 +318,7 @@ services:
   #     # All Routing is done by Traefik, just tell minio where to redirect to.
   #     - MINIO_BROWSER_REDIRECT_URL=http://stash.localhost
   #   deploy:
+  #     replicas: 1
   #     labels:
   #       - traefik.enable=true
   #       - traefik.http.routers.minio.service=minio
@@ -316,6 +335,7 @@ services:
   #   tty: true  # DEBUG
   #   stdin_open: true  # DEBUG
   #   deploy:
+  #     replicas: 1
   #     restart_policy:
   #       condition: on-failure
   #   privileged: true

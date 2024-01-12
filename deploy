@@ -21,7 +21,8 @@ def fetch_repository_url() -> str:
 
 
 def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] = "stack"):
-    """Deploys the stack using the portainer api, to allow for complete control over the stack"""
+    """Deploys the stack using the portainer api from the github repo.
+    This allows portainer to have full control over the stack"""
     # Create an API client
     client = portainer.ApiClient()
     client.configuration.host = "http://127.0.0.1:9000/api"
@@ -43,9 +44,9 @@ def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] 
     stacks.stack_create_docker_swarm_repository(
         endpoint_id=endpoint_id,
         body = portainer.StacksSwarmStackFromGitRepositoryPayload(
-            auto_update=portainer.PortainerAutoUpdateSettings(
-                interval="60m",
-            ),
+            # auto_update=portainer.PortainerAutoUpdateSettings(
+            #     interval="60m",
+            # ),
             name=stack_name,
             compose_file="stack.yaml",
             swarm_id=docker.from_env().swarm.id,
