@@ -13,7 +13,7 @@ services:
       - rsync_etc:/etc
     networks:
       i-form_research_server_stack:
-        ipv4_address: "172.252.0.4"
+        ipv4_address: "172.252.1.4"
 
 # This defines the NFS volumes for persistence
 #! This requires nodes to be IP whitelisted in the NAS

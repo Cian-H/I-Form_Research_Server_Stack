@@ -14,7 +14,7 @@ services:
         condition: on-failure
     networks:
       i-form_research_server_stack:
-        ipv4_address: "172.252.0.12"
+        ipv4_address: "172.252.1.12"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -33,7 +33,7 @@ services:
         condition: on-failure
     networks:
       i-form_research_server_stack:
-        ipv4_address: "172.252.0.13"
+        ipv4_address: "172.252.1.13"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -48,7 +48,7 @@ services:
       - stack_senaite:/data
     networks:
       i-form_research_server_stack:
-        ipv4_address: "172.252.0.14"
+        ipv4_address: "172.252.1.14"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"
@@ -73,7 +73,7 @@ services:
       - elabftw_secret_key
     environment:
       SECRET_KEY: $${cat /run/secrets/elabftw_secret_key}
-      DB_HOST: "172.252.0.7"
+      DB_HOST: "172.252.1.7"
       DB_PORT: "3306"
       DB_NAME: "elabftw"
       DB_USER: "elabftw"
@@ -98,7 +98,7 @@ services:
       #- /etc/letsencrypt:/ssl
     networks:
       i-form_research_server_stack:
-        ipv4_address: "172.252.0.15"
+        ipv4_address: "172.252.1.15"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.go.rule=Path(`/`)"

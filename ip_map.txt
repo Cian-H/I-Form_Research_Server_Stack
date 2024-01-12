@@ -1,14 +1,14 @@
-coredns: 172.252.0.2
-traefik: 172.252.0.3
-rsync: 172.252.0.4
-portainer-agent: 172.252.0.5
-dataverse_db: 172.252.0.6
-mysql: 172.252.0.7  <- needs to be changed once elabftw is set
-nginx: 172.252.0.8
-solr: 172.252.0.9
-minio: 172.252.0.10
-dataverse: 172.252.0.11
-grafana: 172.252.0.12
-neodash: 172.252.0.13
-senaite: 172.252.0.14
-elabftw: 172.252.0.15
+coredns: 172.252.1.2
+traefik: 172.252.1.3
+rsync: 172.252.1.4
+portainer-agent: 172.252.1.5
+dataverse_db: 172.252.1.6
+mysql: 172.252.1.7  <- needs to be changed once elabftw is set
+nginx: 172.252.1.8
+solr: 172.252.1.9
+minio: 172.252.1.10
+dataverse: 172.252.1.11
+grafana: 172.252.1.12
+neodash: 172.252.1.13
+senaite: 172.252.1.14
+elabftw: 172.252.1.15
