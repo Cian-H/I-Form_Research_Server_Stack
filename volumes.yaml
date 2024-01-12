@@ -1,81 +1,137 @@
 version: "3.8"
 
+services:
+  rsync:
+    image: alpineline/rsyncd:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - rsync_run:/var/run
+      - rsync_log:/var/log
+      - rsync_etc:/etc
+    networks:
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.4"
+
 # This defines the NFS volumes for persistence
 #! This requires nodes to be IP whitelisted in the NAS
 volumes:
+  rsync_run:
+    name: stack_rsync_run
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/rsync/run"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  rsync_log:
+    name: stack_rsync_log
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/rsync/log"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  rsync_etc:
+    name: stack_rsync_etc
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/rsync/etc"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   traefik:
+    name: stack_traefik
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/traefik"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   letsencrypt:
+    name: stack_letsencrypt
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/letsencrypt"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  coredns:
+    name: stack_coredns
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/coredns"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   web:
+    name: stack_web
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/web"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   grafana:
+    name: stack_grafana
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/grafana"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse:
+    name: stack_dataverse
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_db:
+    name: stack_dataverse_db
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/postgres_db"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_secrets:
+    name: stack_dataverse_secrets
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/secrets"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_solr_data:
+    name: stack_dataverse_solr_data
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/solr-data"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_triggers:
+    name: stack_dataverse_triggers
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/triggers"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_solr:
+    name: stack_dataverse_solr
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/solr"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_minio:
+    name: stack_dataverse_minio
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/minio-data"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_config:
+    name: stack_dataverse_config
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/config"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_schema:
+    name: stack_dataverse_schema
     driver: local
     driver_opts:
       type: nfs
@@ -83,56 +139,69 @@ volumes:
       device: ":volume1/dataverse/config/schema.xml"
   # /opt/payara/appserver/glassfish/domains/domain1/config <- login config is here in container
   dataverse_init:
+    name: stack_dataverse_init
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/init.d"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_data:
+    name: stack_dataverse_data
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/data"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   dataverse_docroot:
+    name: stack_dataverse_docroot
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/dataverse/docroot"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   neo4j:
+    name: stack_neo4j
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/neo4j"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   senaite:
+    name: stack_senaite
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/senaite"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   elabftw_uploads:
+    name: stack_elabftw_uploads
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/elabftw/uploads"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   elabftw_var:
+    name: stack_elabftw_var
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/elabftw/var"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   elabftw_etc:
+    name: stack_elabftw_etc
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/elabftw/etc"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
   elabftw_sql:
+    name: stack_elabftw_sql
     driver: local
     driver_opts:
       type: nfs
       device: ":volume1/elabftw/sql"
       o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+
+networks:
+  i-form_research_server_stack:
+    external: true
