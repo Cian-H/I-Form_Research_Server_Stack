@@ -173,6 +173,8 @@ services:
   # This should provide the real AI assisted punching power for this stack
   neodash:
     image: neo4jlabs/neodash:latest
+    depends_on:
+      - neo4j
     ports:
       - "5005:5005"
     deploy:
