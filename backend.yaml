@@ -1,5 +1,10 @@
 version: "3.8"
 
+include:
+  - volumes.yaml
+  - networks.yaml
+  - secrets.yaml
+
 services:
   ###~~~~~~ First, we should plan our network management services ~~~~~~###
   # Obviously, we should add the portainer agent service for managing swarm resources
@@ -100,18 +105,15 @@ services:
   #     - "traefik.http.services.go.loadbalancer.server.port=5432"
   # We also want a mysql database for elabftw
   mysql:
-    image: mysql/mysql-server:latest
-    tty: true
-    stdin_open: true
+    image: mysql:8.0
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
-    # healthcheck:
-    #   test: "/usr/bin/mysql --user=elabftw --password=test --execute 'SHOW DATABASES;'"
-    #   interval: 5s
-    #   timeout: 5s
-    #   retries: 20
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
     cap_drop:
       - AUDIT_WRITE
       - MKNOD
@@ -125,33 +127,17 @@ services:
     environment:
       MYSQL_DATABASE: "elabftw"
       MYSQL_USER: "elabftw"
-      MYSQL_PASSWORD: "test" # MYSQL_PASSWORD_FILE: /run/secrets/elabftw_sql_key
+      MYSQL_PASSWORD_FILE: /run/secrets/elabftw_sql_key
       MYSQL_ROOT_PASSWORD: "test" # MYSQL_RANDOM_ROOT_PASSWORD: 1
-      MYSQL_HOST: "localhost"
-      MYSQL_ROOT_HOST: "localhost" # Must allow root access from any host or won't work on swarm
+      MYSQL_HOST: "172.252.0.3"
+      MYSQL_ROOT_HOST: "172.252.0.3" # Must allow root access from any host or won't work on swarm
       TZ: "Europe/Paris"
     volumes:
       - elabftw_sql:/var/lib/mysql
     networks:
-      - i-form_research_server_stack
+      i-form_research_server_stack:
+        ipv4_address: "172.252.0.2"
   ###~~~~~~ Then, we plan our general utility services ~~~~~~###
-  # This service runs a grafana instance for hosting dashboards
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana:/var/lib/grafana
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    networks:
-      - i-form_research_server_stack
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go.rule=Path(`/`)"
-      - "traefik.http.services.go.loadbalancer.server.port=3000"
   # The following service is a simple nginx server that hosts static websites
   nginx:
     image: nginx:latest
@@ -172,92 +158,6 @@ services:
   # A github runner is useful for self-hosting our development pipelines
   # github_runner:
   #   image: "ghcr.io/actions/actions-runner:2.311.0"
-  # Then, we add neodash as a service that can be used to visualize the neo4j database
-  # This should provide the real AI assisted punching power for this stack
-  neodash:
-    image: neo4jlabs/neodash:latest
-    depends_on:
-      - neo4j
-    ports:
-      - "5005:5005"
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    networks:
-      - i-form_research_server_stack
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go.rule=Path(`/`)"
-      - "traefik.http.services.go.loadbalancer.server.port=5005"
-  # Lastly, we need a LIMS system, but we're not sure which one to use yet
-  # As a test, we'll run senaite, with elabftw for lab notebook functionality
-  senaite:
-    image: senaite/senaite:edge
-    ports:
-      - "8082:8080"
-    volumes:
-      - senaite:/data
-    networks:
-      - i-form_research_server_stack
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go.rule=Path(`/`)"
-      - "traefik.http.services.go.loadbalancer.server.port=8080"
-  # We also need to add a service for the elabftw instance and its database
-  elabftw:
-    image: elabftw/elabimg:latest
-    # tty: true
-    # stdin_open: true
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    depends_on:
-      - mysql
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-      - FOWNER
-      - DAC_OVERRIDE
-    secrets:
-      - elabftw_sql_key
-      - elabftw_secret_key
-    environment:
-      SECRET_KEY: /run/secrets/elabftw_secret_key
-      DB_HOST: "localhost"
-      DB_PORT: "3306"
-      DB_NAME: "elabftw"
-      DB_USER: "elabftw"
-      DB_PASSWORD: "test" # "/run/secrets/elabftw_sql_key"
-      # - DB_PASSWORD=$$DB_PASSWORD
-      # DB_CERT_PATH: "/mysql-cert/cert.pem"
-      PHP_TIMEZONE: "Europe/Paris"
-      TZ: "Europe/Paris"
-      SERVER_NAME: "I-Form eLabFTW"
-      SITE_URL: "127.0.0.1:443" # "elab.i-form.ie"
-      DISABLE_HTTPS: 1
-      ENABLE_LETSENCRYPT: 0
-    ports:
-      - "3148:443"
-      # - "443:443"
-    volumes:
-      - elabftw_uploads:/elabftw/uploads
-      - elabftw_var:/var/elabftw
-      - elabftw_etc:/etc/elabftw
-      # if you have enabled letsencrypt, uncomment the line below
-      # path to the folder with TLS certificate + private key
-      # host:container
-      #- /etc/letsencrypt:/ssl
-    networks:
-      - i-form_research_server_stack
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.go.rule=Path(`/`)"
-      - "traefik.http.services.go.loadbalancer.server.port=443"
   # # Lastly, we have to add several services to get dataverse to work
   # solr:
   #   image: coronawhy/solr:8.9.0
@@ -426,152 +326,3 @@ services:
   #     - "traefik.http.routers.dataverse.tls.certresolver=myresolver"
   #   networks:
   #     - i-form_research_server_stack
-
-networks:
-  i-form_research_server_stack:
-    external: true
-
-# This defines the NFS volumes for persistence
-#! This requires nodes to be IP whitelisted in the NAS
-volumes:
-  traefik:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/traefik"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  letsencrypt:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/letsencrypt"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  web:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/web"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  grafana:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/grafana"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_db:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/postgres_db"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_secrets:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/secrets"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_solr_data:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/solr-data"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_triggers:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/triggers"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_solr:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/solr"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_minio:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/minio-data"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_config:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/config"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_schema:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=192.168.1.237,nolock,soft,rw
-      device: ":volume1/dataverse/config/schema.xml"
-  # /opt/payara/appserver/glassfish/domains/domain1/config <- login config is here in container
-  dataverse_init:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/init.d"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_data:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/data"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  dataverse_docroot:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/dataverse/docroot"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  neo4j:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/neo4j"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  senaite:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/senaite"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  elabftw_uploads:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/elabftw/uploads"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  elabftw_var:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/elabftw/var"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  elabftw_etc:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/elabftw/etc"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  elabftw_sql:
-    driver: local
-    driver_opts:
-      type: nfs
-      device: ":volume1/elabftw/sql"
-      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-
-secrets:
-  elabftw_sql_key:
-    external: true
-  elabftw_secret_key:
-    external: true
-  dataverse_postgres_key:
-    external: true

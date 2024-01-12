@@ -1,6 +1,7 @@
 #!/usr/bin/env poetry run python
 
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 import docker  # type: ignore
@@ -9,7 +10,7 @@ import tomllib
 import typer  # type: ignore
 
 
-def docker_deploy_core(stack_name: Optional[str] = "core"):
+def deploy_core(stack_name: Optional[str] = "core"):
     """Simply deploys the core services"""
     subprocess.run(["docker", "stack", "deploy", "-c", "docker-compose.yaml", stack_name])
 
@@ -20,7 +21,39 @@ def fetch_repository_url() -> str:
         return tomllib.load(f)["tool"]["poetry"]["repository"]
 
 
-def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] = "stack"):
+def portainer_deploy_stack(stack_file: str, stacks: portainer.api.stacks_api.StacksApi, endpoint_id: int, stack_name: Optional[str] = None, **kwargs) -> None:
+    """Deploys the volumes for the stack"""
+    valid_extensions = [".yaml", ".yml"]
+    stack_path = Path(stack_file)
+    if stack_path.suffix not in valid_extensions:
+        for file in (stack_path.with_suffix(ext) for ext in valid_extensions):
+            if file.exists():
+                stack_path = file
+                break
+        else:
+            raise FileNotFoundError(f"Could not find stack file {stack_file}")
+    
+    print(f"Deploying stack {stack_name} from {stack_path}")
+    stack_name = stack_name or stack_path.stem
+    
+    stacks.stack_create_docker_swarm_repository(
+        endpoint_id=endpoint_id,
+        body = portainer.StacksSwarmStackFromGitRepositoryPayload(
+            **{
+                # "auto_update": portainer.PortainerAutoUpdateSettings(
+                #     interval="60m",
+                # ),
+                "name": stack_name,
+                "compose_file": str(stack_path),
+                "swarm_id": docker.from_env().swarm.id,
+                "repository_url": fetch_repository_url(),
+            }.update(kwargs),
+        )
+    )
+    print(f"Stack {stack_name} deployed")
+
+
+def deploy_stack(username: str, password: str, stack_name: Optional[str] = "stack"):
     """Deploys the stack using the portainer api from the github repo.
     This allows portainer to have full control over the stack"""
     print("Deploying stack")
@@ -41,29 +74,23 @@ def docker_deploy_stack(username: str, password: str, stack_name: Optional[str] 
     # Get the endpoint ID for the local docker endpoint
     endpoints = portainer.EndpointsApi(client)
     endpoint_id = next(filter(lambda e: e.name == "local", endpoints.endpoint_list())).id
-    # Then, deploy the stack using the API
-    print("Deploying stack via portainer API")
+    # Initialize a stacks API
     stacks = portainer.StacksApi(client)
-    stacks.stack_create_docker_swarm_repository(
-        endpoint_id=endpoint_id,
-        body = portainer.StacksSwarmStackFromGitRepositoryPayload(
-            # auto_update=portainer.PortainerAutoUpdateSettings(
-            #     interval="60m",
-            # ),
-            name=stack_name,
-            compose_file="stack.yaml",
-            swarm_id=docker.from_env().swarm.id,
-            repository_url=fetch_repository_url(),
-        )
-    )
-    print("Stack deployed")
+    # Then, deploy the substacks using the API
+    print("Deploying substacks via portainer API")
+    portainer_deploy_stack("volumes", stacks, endpoint_id)
+    # portainer_deploy_stack("networks", stacks, endpoint_id)
+    # portainer_deploy_stack("secrets", stacks, endpoint_id)
+    # portainer_deploy_stack("backend", stacks, endpoint_id)
+    # portainer_deploy_stack("frontend", stacks, endpoint_id)
+    print("Stack deployed!")
 
 
-def docker_deploy_all(username: str, password: str, core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):
+def deploy_all(username: str, password: str, core_name: Optional[str] = "core", stack_name: Optional[str] = "stack"):
     """Deploys the core services and the stack"""
-    docker_deploy_core(core_name)
-    docker_deploy_stack(username, password, stack_name)
+    # deploy_core(core_name)
+    deploy_stack(username, password, stack_name)
 
 
 if __name__ == "__main__":
-    typer.run(docker_deploy_all)
+    typer.run(deploy_all)

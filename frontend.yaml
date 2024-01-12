@@ -1,0 +1,111 @@
+version: "3.8"
+
+include:
+  - volumes.yaml
+  - networks.yaml
+  - secrets.yaml
+
+services:
+  # This service runs a grafana instance for hosting dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=3000"
+  # Then, we add neodash as a service that can be used to visualize the neo4j database
+  # This should provide the real AI assisted punching power for this stack
+  neodash:
+    image: neo4jlabs/neodash:latest
+    depends_on:
+      - neo4j
+    ports:
+      - "5005:5005"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=5005"
+  # Lastly, we need a LIMS system, but we're not sure which one to use yet
+  # As a test, we'll run senaite, with elabftw for lab notebook functionality
+  senaite:
+    image: senaite/senaite:edge
+    ports:
+      - "8082:8080"
+    volumes:
+      - senaite:/data
+    networks:
+      - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=8080"
+  # We also need to add a service for the elabftw instance and its database
+  elabftw:
+    image: elabftw/elabimg:latest
+    # tty: true
+    # stdin_open: true
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - mysql
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - FOWNER
+      - DAC_OVERRIDE
+    secrets:
+      - elabftw_sql_key
+      - elabftw_secret_key
+    environment:
+      SECRET_KEY: /run/secrets/elabftw_secret_key
+      DB_HOST: "localhost"
+      DB_PORT: "3306"
+      DB_NAME: "elabftw"
+      DB_USER: "elabftw"
+      DB_PASSWORD: "test" # "/run/secrets/elabftw_sql_key"
+      # - DB_PASSWORD=$$DB_PASSWORD
+      # DB_CERT_PATH: "/mysql-cert/cert.pem"
+      PHP_TIMEZONE: "Europe/Paris"
+      TZ: "Europe/Paris"
+      SERVER_NAME: "I-Form eLabFTW"
+      SITE_URL: "127.0.0.1:443" # "elab.i-form.ie"
+      DISABLE_HTTPS: 1
+      ENABLE_LETSENCRYPT: 0
+    ports:
+      - "3148:443"
+      # - "443:443"
+    volumes:
+      - elabftw_uploads:/elabftw/uploads
+      - elabftw_var:/var/elabftw
+      - elabftw_etc:/etc/elabftw
+      # if you have enabled letsencrypt, uncomment the line below
+      # path to the folder with TLS certificate + private key
+      # host:container
+      #- /etc/letsencrypt:/ssl
+    networks:
+      - i-form_research_server_stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go.rule=Path(`/`)"
+      - "traefik.http.services.go.loadbalancer.server.port=443"

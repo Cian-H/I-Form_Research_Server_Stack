@@ -1,0 +1,136 @@
+# This defines the NFS volumes for persistence
+#! This requires nodes to be IP whitelisted in the NAS
+volumes:
+  traefik:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/traefik"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/letsencrypt"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  web:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/web"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  grafana:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/grafana"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_db:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/postgres_db"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_secrets:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/secrets"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_triggers:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/triggers"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_solr:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/solr"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_minio:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/minio-data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_config:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/config"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_schema:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.1.237,nolock,soft,rw
+      device: ":volume1/dataverse/config/schema.xml"
+  # /opt/payara/appserver/glassfish/domains/domain1/config <- login config is here in container
+  dataverse_init:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/init.d"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/data"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  dataverse_docroot:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/dataverse/docroot"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  neo4j:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/neo4j"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  senaite:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/senaite"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_uploads:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/uploads"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_var:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/var"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_etc:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/etc"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+  elabftw_sql:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":volume1/elabftw/sql"
+      o: "addr=192.168.1.237,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"

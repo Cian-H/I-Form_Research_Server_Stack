@@ -1,0 +1,7 @@
+networks:
+  i-form_research_server_stack:
+    driver: overlay
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.252.0.0/16
