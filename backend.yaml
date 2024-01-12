@@ -91,8 +91,8 @@ services:
       MYSQL_USER: "elabftw"
       MYSQL_PASSWORD_FILE: /run/secrets/elabftw_sql_key
       MYSQL_ROOT_PASSWORD: "test" # MYSQL_RANDOM_ROOT_PASSWORD: 1
-      MYSQL_HOST: "172.252.1.15" # Needs to allow access from the elabftw container
-      MYSQL_ROOT_HOST: "172.252.1.15"
+      MYSQL_HOST: "frontend_elabftw" # "172.252.1.15" # Needs to allow access from the elabftw container
+      MYSQL_ROOT_HOST: "frontend_elabftw" # "172.252.1.15"
       TZ: "Europe/Paris"
     volumes:
       - stack_elabftw_sql:/var/lib/mysql
